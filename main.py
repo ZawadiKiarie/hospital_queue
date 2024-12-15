@@ -111,13 +111,39 @@ class HospitalQueueApp:
     self.update_queue_display()
     
   def remove_by_name(self):
+    if self.queue.is_empty():
+      messagebox.showwarning("Queue Empty", "There is no one in the queue to remove")
+      return
     name = self.simple_input("Enter the name of the person to be removed: ")
     if name:
-      removed = self.queue.remove_by_name(name)
+      matching_profiles = [
+        profile for _, _, profile in self.queue.data if profile["name"].lower() == name.lower()
+      ]
+      if not matching_profiles:
+        messagebox.showerror("Error", f"No person named {name} found in the queue")
+        return
+      if len(matching_profiles) > 1:
+        options = "\n".join(
+          [f"{i+1}.{p['name']} (Age: {p['age']})" for i, p in enumerate(matching_profiles)]
+        )
+        choice = self.simple_input(f"Multiple matches found:\n{options}\nSelect the number to remove:")
+        try:
+          choice = int(choice) - 1
+          if 0 <= choice < len(matching_profiles):
+            profile_to_remove = matching_profiles[choice]
+          else:
+            raise ValueError
+        except ValueError:
+          messagebox.showerror("Error", "Invalid selection.")
+          return
+      else:
+        profile_to_remove = matching_profiles[0]
+        
+      removed = self.queue.remove_by_id(profile_to_remove["id"])
       if removed:
         messagebox.showinfo("Success", f"Removed {removed['name']} (Age: {removed['age']})")
       else:
-        messagebox.showerror("Error", f"No person names {name} found in the queue.")
+        messagebox.showerror("Error", f"No person named {name} found in the queue.")
     # self.queue.data.sort(reverse=True)
     self.update_queue_display()
     
@@ -140,37 +166,57 @@ class HospitalQueueApp:
       messagebox.showwarning("Queue Empty", "There is no one in the queue")
       
   def update_profile(self):
-      name = self.simple_input("Enter the name of the person to update:")
-      if name:
-        for _, _, profile in self.queue.data:
-          if profile['name'].lower() == name.lower():
-            new_name = self.simple_input(f"Enter new name for {profile['name']} (leave blank to keep the same)")
-            new_age = self.simple_input(f"Enter new age for {profile['name']}(leave blank to kepp the same)")
-            updated_profile = profile.copy() #start with existing profile
-            
-            if new_name:
-              # profile['name'] = new_name
-              updated_profile['name'] = new_name
-            if new_age:
-              try:
-                updated_profile['age'] = int(new_age)
-                # self.queue.data[index] = (new_age, profile['name'], profile)
-                # self.queue.data.sort(reverse=True) #resort the queue
-                # messagebox.showinfo("Profile updated", f"{name}'s profile updated successfully")
-              except ValueError:
-                messagebox.showerror("Error", "Age must be a number")
-                return
-            
-            try:
-              self.queue.update(profile['name'], updated_profile['age'], updated_profile)
-              messagebox.showinfo("Profile updated", f"{name}'s profile updated successfully")
-              self.update_queue_display()
-              return
-            except ValueError as e:
-              messagebox.showerror("Error", str(e))
-              return
+    if self.queue.is_empty():
+      messagebox.showwarning("Queue Empty", "There is no one in the queue to remove")
+      return
+    name = self.simple_input("Enter the name of the person to update:")
+    if name:
+      matching_profiles = [
+        profile for _, _, profile in self.queue.data if profile["name"].lower() == name.lower()
+      ]
+      if not matching_profiles:
+        messagebox.showerror("Error", f"No person named {name} found in queue")
+        return
+      
+      if len(matching_profiles) > 1:
+        options = "\n".join(
+          [f"{i+1}. {p['name']} (Age: {p['age']})" for i, p in enumerate(matching_profiles)]
+        )
+        choice = self.simple_input(f"Multiple matched found: \n{options}\nSelect the number to update:")
+        try:
+          choice = int(choice)-1
+          if 0 <= choice < len(matching_profiles):
+            profile_to_update = matching_profiles[choice]
+          else:
+            raise ValueError
+        except ValueError:
+          messagebox.showerror("Error", "Invalid selection.")
+          return
+      else:
+        profile_to_update = matching_profiles[0]
+        
+      new_name = self.simple_input(f"Enter new name for {profile_to_update['name']} (leave blank to keep the same)")
+      new_age = self.simple_input(f"Enter new age for {profile_to_update['name']}(leave blank to keep the same)")
+      updated_profile = profile_to_update.copy() #start with existing profile
+      
+      if new_name:
+        # profile['name'] = new_name
+        updated_profile['name'] = new_name
+      if new_age:
+        try:
+          updated_profile['age'] = int(new_age)
+        except ValueError:
+          messagebox.showerror("Error", "Age must be a number")
+          return
           
-        messagebox.showerror("Error", f"No person named {name} found")
+      try:
+        self.queue.update(profile_to_update['id'], updated_profile['age'], updated_profile)
+        messagebox.showinfo("Profile updated", f"{profile_to_update['name']}'s profile updated successfully")
+        self.update_queue_display()
+        return
+      except ValueError as e:
+        messagebox.showerror("Error", str(e))
+        return
           
   def check_is_empty(self):
     if self.queue.is_empty():
